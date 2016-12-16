@@ -1,12 +1,15 @@
 from Tkinter import *
+
 import vrep
 import sys
 import math
 import time
+import cv2
+import numpy as np
 
-posZ = 0.5100
-x=-3.7750
-y=-4.6250
+posZ = 1.500
+x=-1.125
+y=3.975
 ts=0.5
 maxDesplamiento = 5;
 vrep.simxFinish(-1)
@@ -20,6 +23,8 @@ else:
     sys.exit('No se pudo Conectar')
 
 erroCode,dron = vrep.simxGetObjectHandle(clientID,'Quadricopter_target',vrep.simx_opmode_oneshot_wait)
+#erroCode,camara = vrep.simxGetObjectHandle(clientID,'Vision_sensor',vrep.simx_opmode_oneshot_wait)   #'Quadricopter_frontCamera'   Vision_sensor
+
 #########
 
 def derecha():
@@ -39,6 +44,32 @@ def zoomPositivo():
 
 def zoomNegativo():
     moverZ(0)
+def capturarImage():
+    erroCode,dron = vrep.simxGetObjectHandle(clientID,'Quadricopter_target',vrep.simx_opmode_oneshot_wait)
+    erroCode,camara = vrep.simxGetObjectHandle(clientID,'Vision_sensor_front',vrep.simx_opmode_oneshot_wait)   #'Quadricopter_frontCamera'   Vision_sensor_front
+    _,resolution, image = vrep.simxGetVisionSensorImage(clientID,camara,0,vrep.simx_opmode_streaming)
+    time.sleep(1)
+    k=0
+    while k==0:
+        _,resolution, image = vrep.simxGetVisionSensorImage(clientID,camara,0,vrep.simx_opmode_buffer)
+        img = np.array(image,dtype=np.uint8)
+        img.resize([resolution[0], resolution[1], 3])
+        #cv2.imshow('Imge1', img)
+        img1 = np.rot90(img,1)
+        img2 = np.fliplr(img1)
+        img3 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
+        img4 = cv2.cvtColor(img3, cv2.COLOR_BGR2HSV)
+        print "esc"
+        #cv2.imshow('Imge', img)
+        #tecla = cv2.waitKey(5) & 0xFF
+        #if tecla == 27:
+        k=1
+        cv2.imwrite('0.png',img)
+        cv2.imwrite('1.png',img1)
+        cv2.imwrite('2.png',img2)
+        cv2.imwrite('3.png',img3)
+        cv2.imwrite('4.png',img4)
+        print "listo"
 ## contDesplamiento = numero de interacci?n dentro del while
 ## tipo = 1 sumar ; 0 restar
 def moverY(tipo):
@@ -48,7 +79,8 @@ def moverY(tipo):
     global ts
     global maxDesplamiento
     cont = 0
-    while ( (y>=-4.70 and y<=2.25) and cont<=maxDesplamiento):
+    #while ( (y>=-4.70 and y<=2.25) and cont<=maxDesplamiento):
+    while (cont<=maxDesplamiento):
         cont=cont+1
         if tipo == 1:
             y=y+0.1
@@ -64,7 +96,8 @@ def moverX(tipo):
     global ts
     global maxDesplamiento
     cont = 0
-    while ( x>=-3.80 and x<=3.77 and cont<=maxDesplamiento):
+    #while ( x>=-3.80 and x<=3.77 and cont<=maxDesplamiento):
+    while (cont<=maxDesplamiento):
         cont=cont+1
         if tipo == 1:
             x=x-0.1
@@ -81,7 +114,8 @@ def moverZ(tipo):
     global ts
     global maxDesplamiento
     cont = 0
-    while (posZ>0.50 and posZ<1.5):
+    #while (posZ>0.50 and posZ<1.5 and cont<=maxDesplamiento):
+    while (cont<=maxDesplamiento):
         cont=cont+1
         if tipo == 1:
             posZ=posZ+0.05
@@ -114,6 +148,7 @@ botonYDER = Button(ventana,command=derecha,text="Derecha").place(x=200,y=100)
 botonXABA = Button(ventana,command=abajo,text="Abajo").place(x=165,y=135)
 botonZPOS = Button(ventana,command=zoomPositivo,text="Zoom +").place(x=20,y=82)
 botonZNEG = Button(ventana,command=zoomNegativo,text="Zoom -").place(x=20,y=112)
+botonZNEG = Button(ventana,command=capturarImage,text="Capturar Imagen").place(x=20,y=152)
 
 
 ventana.mainloop()
