@@ -8,10 +8,10 @@ import cv2
 import numpy as np
 
 posZ = 1.500
-x=-1.125
-y=3.975
+x=4.600
+y=4.075
 ts=0.5
-maxDesplamiento = 5;
+maxDesplamiento = 2;
 vrep.simxFinish(-1)
 
 clientID=vrep.simxStart('127.0.0.1',19997,True,True,5000,5) # Connect to V-REP
@@ -31,6 +31,7 @@ while (True):
     _,resolution, image = vrep.simxGetVisionSensorImage(clientID,cam,0,vrep.simx_opmode_buffer)
     img = np.array(image,dtype=np.uint8)
     img.resize(256, 256, 3)
+    img = np.rot90(img,1)
     img1 = np.fliplr(img)
     img2 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
     frame = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
@@ -40,12 +41,22 @@ while (True):
     mascara=cv2.inRange(frame,rangomin,rangomax)
     openin=cv2.morphologyEx(mascara, cv2.MORPH_OPEN, kernel)
     x,y,w,h=cv2.boundingRect(openin)
+    x=8
+    y=20
+    h=10
+    w=20
+    print(str(x)+":"+str(y)+":"+str(w)+" "+str(h))
     cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),3)
     cv2.circle(frame,(x+w/2,y+h/2),5,(0,0,255),-1)
     cv2.imshow('camara',frame)
     k=cv2.waitKey(1) & 0xFF
     if k==27:
+        posZ = 1.500
+        x=4.600
+        y=4.075
+        ts=0.5
         break;
+
 
 cv2.destroyAllWindows()
 
@@ -127,7 +138,7 @@ def moverX(tipo):
             x=x-0.1
         elif tipo == 0:
             x=x+0.1
-
+        print(str(x)+" : "+str(y)+" :"+str(posZ))
         vrep.simxSetObjectPosition(clientID,dron,-1,(x,y,posZ),vrep.simx_opmode_oneshot)
         time.sleep(ts)
 
@@ -148,6 +159,21 @@ def moverZ(tipo):
 
         vrep.simxSetObjectPosition(clientID,dron,-1,(x,y,posZ),vrep.simx_opmode_oneshot)
         time.sleep(ts)
+
+def recorridoProgramado():
+    global posZ
+    global x
+    global y
+    global ts
+    global maxDesplamiento
+    cont = 0
+    while (x>=-4.77 and x<4.77):
+        moverX(1)
+    while ( (y>=0.77 and y<=4.2)):
+        moverY(0)
+    while (x>=-4.77 and x<=5.1):
+        moverX(0)
+
 
 def menu():
     op=0
@@ -173,9 +199,11 @@ botonXABA = Button(ventana,command=abajo,text="Abajo").place(x=165,y=135)
 botonZPOS = Button(ventana,command=zoomPositivo,text="Zoom +").place(x=20,y=82)
 botonZNEG = Button(ventana,command=zoomNegativo,text="Zoom -").place(x=20,y=112)
 botonZNEG = Button(ventana,command=capturarImage,text="Capturar Imagen").place(x=20,y=152)
+botonRECPROG = Button(ventana,command=recorridoProgramado,text="Recorrido Programado").place(x=20,y=180)
 
-
-ventana.mainloop()from Tkinter import *
+ventana.mainloop()
+"""
+from Tkinter import *
 
 import vrep
 import sys
@@ -351,3 +379,4 @@ botonZNEG = Button(ventana,command=capturarImage,text="Capturar Imagen").place(x
 
 
 ventana.mainloop()
+"""
