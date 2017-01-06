@@ -23,7 +23,31 @@ else:
     sys.exit('No se pudo Conectar')
 
 erroCode,dron = vrep.simxGetObjectHandle(clientID,'Quadricopter_target',vrep.simx_opmode_oneshot_wait)
-#erroCode,camara = vrep.simxGetObjectHandle(clientID,'Vision_sensor',vrep.simx_opmode_oneshot_wait)   #'Quadricopter_frontCamera'   Vision_sensor
+erroCode,cam = vrep.simxGetObjectHandle(clientID,'Vision_sensor_front',vrep.simx_opmode_oneshot_wait)   #'Quadricopter_frontCamera'   Vision_sensor
+_,resolution, image = vrep.simxGetVisionSensorImage(clientID,cam,0,vrep.simx_opmode_streaming)
+time.sleep(1)
+kernel=np.ones((5,5),np.uint8)
+while (True):
+    _,resolution, image = vrep.simxGetVisionSensorImage(clientID,cam,0,vrep.simx_opmode_buffer)
+    img = np.array(image,dtype=np.uint8)
+    img.resize(256, 256, 3)
+    img1 = np.fliplr(img)
+    img2 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
+    frame = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
+    cv2.imshow('Imge3', img2)
+    rangomax=np.array([20,255,10])
+    rangomin=np.array([0,51,0])
+    mascara=cv2.inRange(frame,rangomin,rangomax)
+    openin=cv2.morphologyEx(mascara, cv2.MORPH_OPEN, kernel)
+    x,y,w,h=cv2.boundingRect(openin)
+    cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),3)
+    cv2.circle(frame,(x+w/2,y+h/2),5,(0,0,255),-1)
+    cv2.imshow('camara',frame)
+    k=cv2.waitKey(1) & 0xFF
+    if k==27:
+        break;
+
+cv2.destroyAllWindows()
 
 #########
 
