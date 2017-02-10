@@ -5,13 +5,12 @@ def moverY(tipo):
     global ts
     global maxDesplamiento
     cont = 0
-    #while ( (y>=-4.70 and y<=2.25) and cont<=maxDesplamiento):
     while (cont<=maxDesplamiento):
         cont=cont+1
         if tipo == 1:
-            posDronY=posDronY+0.05
-        elif tipo == 0:
             posDronY=posDronY-0.05
+        elif tipo == 0:
+            posDronY=posDronY+0.05
         vrep.simxSetObjectPosition(clientID,dron,-1,(posDronX,posDronY,posDronZ),vrep.simx_opmode_oneshot)
         time.sleep(ts)
 
@@ -22,24 +21,20 @@ def moverX(tipo):
     global ts
     global maxDesplamiento
     cont = 0
-    #while ( x>=-3.80 and x<=3.77 and cont<=maxDesplamiento):
     while (cont<=maxDesplamiento):
         cont=cont+1
         if tipo == 1:
-            posDronX=posDronX-0.05
-        elif tipo == 0:
             posDronX=posDronX+0.05
-        #print(str(x)+" : "+str(y)+" :"+str(posZ))
+        elif tipo == 0:
+            posDronX=posDronX-0.05
         vrep.simxSetObjectPosition(clientID,dron,-1,(posDronX,posDronY,posDronZ),vrep.simx_opmode_oneshot)
         time.sleep(ts)
-
-
 
 def addCola(cola , element):
     cont = 0
     for i in cola:
         cont=cont+1
-    if cont<10:
+    if cont<5:
         cola.append(element)
     else:
         cola.popleft()
@@ -49,7 +44,7 @@ def addCola(cola , element):
 def sumCola(cola):
     acum = 0
     for i in cola:
-        acum=acum+i
+        acum=acum+abs(i)
     return acum
 
 def countCola(cola):
@@ -57,6 +52,29 @@ def countCola(cola):
     for i in cola:
         cont=cont+1
     return cont
+
+def printCola(cola,coord):
+    print("+++++++++Inicia "+coord)
+    for i in cola:
+        print(str(i))
+    print("---------FIN "+coord)
+
+def create(name):
+
+    try:
+        if(os.path.isfile(name)):
+            os.remove(name)
+            file=open(name,'a')
+            file.close()
+    except:
+            print("error occured")
+            sys.exit(0)
+
+
+def escribir(name, posicion):
+    archivo = open(name, "a")
+    archivo.write(posicion+'\n')
+    archivo.close()
 
 from collections import deque
 from Tkinter import *
@@ -66,21 +84,18 @@ import math
 import time
 import cv2
 import numpy as np
+import sys
+import os
 
-posDronZ = 3.700
-posDronX=-8.2570
-posDronY=-8.0000
-ts=0.6
+ts=0.3
 width=256
 height=256
-maxDesplamiento = 1;
-cola_x = deque()
-cola_y = deque()
+maxDesplamiento = 2
+nameArchTrack="Tracking.txt"
 
-bordeT = 100 #equivale un 40% del width y height con la finalidad de que el dron se mueva para mantener al barco en entre {47,211}por w,h
+bordeT = 100
 
 vrep.simxFinish(-1)
-
 
 clientID=vrep.simxStart('127.0.0.1',19997,True,True,5000,5) # Connect to V-REP
 
@@ -90,9 +105,13 @@ else:
     print('Conexion Fallida')
     sys.exit('No se pudo Conectar')
 
+create(nameArchTrack)
 erroCode,dron = vrep.simxGetObjectHandle(clientID,'Quadricopter_target',vrep.simx_opmode_oneshot_wait)
 erroCode,camara = vrep.simxGetObjectHandle(clientID,'Vision_sensor_front',vrep.simx_opmode_oneshot_wait)   #'Quadricopter_frontCamera'   Vision_sensor
+#erroCode,gps = vrep.simxGetObjectHandle(clientID,'GPS_reference',vrep.simx_opmode_oneshot_wait)
 _,resolution, image = vrep.simxGetVisionSensorImage(clientID,camara,0,vrep.simx_opmode_streaming)
+
+time.sleep(2)
 # Inicializamos el primer frame a vac?o.
 # Nos servir? para obtener el fondo
 fondo = None
@@ -102,17 +121,26 @@ coordX = 0
 coordY = 0
 coordXAnt = 0
 coordYAnt = 0
-
-
-
+cont = 1
+#cola_x = deque()
+#cola_y = deque()
 # Recorremos todos los frames
 while True:
+    if cont<10:
+        positionDron=vrep.simxGetObjectPosition(clientID,dron,-1,vrep.simx_opmode_oneshot)
+        posDronX=positionDron[1][0]
+        posDronY=positionDron[1][1]
+        posDronZ = positionDron[1][2]
+        print(str(posDronX)+"  "+str(posDronY)+"  "+str(posDronZ)+"  ")
+    cont=cont+1
     # Obtenemos el frame
     #(grabbed, frame) = camara.read()
     _,resolution, image = vrep.simxGetVisionSensorImage(clientID,camara,0,vrep.simx_opmode_buffer)
+    #coordenadasGps=vrep.simxGetObjectPosition(clientID,gps,-1,vrep.simx_opmode_oneshot)
+    #print(resolution)
     img = np.array(image,dtype=np.uint8)
     img.resize(width, height, 3)
-
+    #img.resize([resolution[0], resolution[1], 3])
     img = np.rot90(img,2)
     img1 = np.fliplr(img)
 
@@ -155,28 +183,50 @@ while True:
             cv2.rectangle(frame, (x, y), (x + w, y + h) , (0, 255, 0), 2)
             coordX = x+w/2
             coordY = y+h/2
-            mover = 1
-            #print("coord X, Y "+str(coordX)+" , "+str(coordY))
+            moverXBool = 1
+            moverYBool = 1
+            print("coord X, Y "+str(coordX)+" , "+str(coordY))
             if coordX>bordeT and coordX<(width-bordeT):
+                print("**No Mover X")
                 coordXAnt = coordX
-                mover = 0
+                moverXBool = 0
             if coordY>bordeT and coordY<(width-bordeT):
+                print("**No Mover Y")
                 coordYAnt = coordY
-                mover = 0
+                moverYBool = 0
             #print("coordAnt X, Y "+str(coordXAnt)+" , "+str(coordYAnt))
-            if coordXAnt!=0:
-                addCola(cola_x,coordX-coordXAnt)
-            if coordYAnt!=0:
-                addCola(cola_y,coordY-coordYAnt)
+            #if coordXAnt!=0:
+            #    addCola(cola_x,coordX-coordXAnt)
+            #if coordYAnt!=0:
+            #    addCola(cola_y,coordY-coordYAnt)
 
-            if (mover and countCola(cola_x)==10 or countCola(cola_y)==10):
-                print("SUM X,Y "+str(sumCola(cola_x))+" , "+str(sumCola(cola_y)))
-                if sumCola(cola_x)>sumCola(cola_y):#1
-                    print("Mover X  (Ant > ACT ) "+str(coordXAnt>coordX)+" ("+str(coordXAnt)+">"+str(coordX))
-                    moverX(coordXAnt>coordX)  # 0 eje X + : 1 eje X -
-                else:
-                    print("Mover Y "+str(coordYAnt>coordY)+" ("+str(coordYAnt)+">"+str(coordY))
-                    moverY(coordYAnt>coordY)  # 0 eje Y + : 1 eje Y -
+            if ((moverXBool or moverYBool)):
+                #print("************************************")
+                #printCola(cola_x,"X")
+                #printCola(cola_y,"Y")
+                #print("SUM X,Y "+str(sumCola(cola_x))+" , "+str(sumCola(cola_y)))
+              #  factor=2
+                if moverXBool and coordX!=coordXAnt:
+                    if coordX<bordeT:
+                        print("Mover X atras")
+                        moverX(0)#atras
+
+                    else:
+                        print("Mover X adelante")
+                        moverX(1)#sube
+
+                if moverYBool and coordY!=coordYAnt:
+                    if coordY<bordeT:
+                        print("Mover Y sube")
+                        moverY(0)#sube
+                    else:
+                        print("Mover Y baja")
+                        moverY(1)#baja
+              #  escribir(nameArchTrack,str(coordenadasGps[1][0])+", "+str(coordenadasGps[1][1])+", "+str(coordenadasGps[1][2]))
+             #   cola_x = deque()
+             #   cola_y = deque()
+                coordX = 0
+                coordY = 0
             coordXAnt = coordX
             coordYAnt = coordY
 
@@ -188,7 +238,7 @@ while True:
     #cv2.imshow("Umbral", umbral)
     #cv2.imshow("Resta", resta)
     #cv2.imshow("Contorno", contornosimg)
-    # Tiempo de espera para que se vea bien
+    # Tiempo de espera para que se vea bien 0.1
     time.sleep(0.1)
     # Si ha pulsado la letra esc, salimos
     k=cv2.waitKey(1) & 0xFF
